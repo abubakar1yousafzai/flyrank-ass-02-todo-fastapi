@@ -1,6 +1,11 @@
 from fastapi import FastAPI
-
 import uvicorn
+
+tasks = [
+    {"id": 1, "title": "Buy milk", "done": False},
+    {"id": 2, "title": "Clean room", "done": False},
+    {"id": 3, "title": "Finish assignment", "done": True},
+]
 
 app = FastAPI(
     title= "CRUD Todo",
@@ -20,6 +25,11 @@ def Home():
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
+
+@app.get("/tasks")
+def get_tasks():
+    return tasks
+
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
