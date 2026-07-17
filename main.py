@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Response, HTTPException
+from pydantic import BaseModel
 import uvicorn
 
 tasks = [
@@ -7,6 +8,9 @@ tasks = [
     {"id": 3, "title": "Finish assignment", "done": True},
 ]
 
+class TaskCreate(BaseModel):
+    title: str
+    done: bool = False
 
 app = FastAPI(
     title= "CRUD Todo",
@@ -38,7 +42,15 @@ def get_task(task_id: int):
             return task
     raise HTTPException(status_code=404, detail=f"Task {task_id} not found")  
 
+@app.post("/tasks", status_code=201)
+def create_task(task: TaskCreate):
+    if not task.title.strip():
+        raise HTTPException(status_code=400, detail="Title cannot be empty")
 
+    new_id = max((task_item["id"] for task_item in tasks), default=0) + 1
+    new_task = {"id": new_id, "title": task.title, "done": task.done}
+    tasks.append(new_task)
+    return new_task
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
