@@ -45,12 +45,12 @@ def get_tasks():
 def get_task(task_id: int):
     for task in tasks:
         if task["id"] == task_id:
+            
             return task
     raise HTTPException(status_code=404, detail=f"Task {task_id} not found")  
 
 @app.post("/tasks", status_code=201)
 def create_task(task: TaskCreate):
-    
     if not task.title.strip():
         raise HTTPException(status_code=400, detail="Title cannot be empty")
 
@@ -72,6 +72,16 @@ def update_task(task_id: int, updated: UpdateTask):
                 task["done"] = updated.done
             return task
     raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
+
+@app.delete("/tasks/{task_id}", status_code=204)
+def delete_task(task_id: int):
+    """Get a single task id than  delete a task"""
+    for task in tasks:
+        if task["id"] == task_id:
+            tasks.remove(task)
+            return Response(status_code=204)
+    raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
+
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
