@@ -43,6 +43,7 @@ def get_tasks():
 
 @app.get("/tasks/{task_id}")
 def get_task(task_id: int):
+    """Get a single task by its id."""
     for task in tasks:
         if task["id"] == task_id:
             
@@ -51,6 +52,7 @@ def get_task(task_id: int):
 
 @app.post("/tasks", status_code=201)
 def create_task(task: TaskCreate):
+    """Create a new task"""
     if not task.title.strip():
         raise HTTPException(status_code=400, detail="Title cannot be empty")
 
@@ -61,6 +63,7 @@ def create_task(task: TaskCreate):
 
 @app.put("/tasks/{task_id}")
 def update_task(task_id: int, updated: UpdateTask):
+    """Get a single task id than update a task."""
     for task in tasks:
         if task["id"] == task_id:
             if updated.title is not None:
