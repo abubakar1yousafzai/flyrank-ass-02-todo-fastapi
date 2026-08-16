@@ -1,13 +1,9 @@
 from fastapi import FastAPI, Response, HTTPException
 from pydantic import BaseModel
 from typing import Optional
+from database import init_db, get_connection
 import uvicorn
 
-tasks = [
-    {"id": 1, "title": "Buy milk", "done": False},
-    {"id": 2, "title": "Clean room", "done": False},
-    {"id": 3, "title": "Finish assignment", "done": True},
-]
 
 class TaskCreate(BaseModel):
     title: str
@@ -16,6 +12,8 @@ class TaskCreate(BaseModel):
 class UpdateTask(BaseModel):
     title: Optional[str] = None
     done: Optional[bool] = None
+
+init_db()
 
 
 app = FastAPI(
@@ -39,16 +37,28 @@ def health_check():
 
 @app.get("/tasks")
 def get_tasks():
-    return tasks
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM tasks")
+    rows = cursor.fetchall()
+    conn.close()
+    result = [{"id": row[0], "title": row[1], "done": bool(row[2])} for row in rows]
+
+    return result
 
 @app.get("/tasks/{task_id}")
 def get_task(task_id: int):
     """Get a single task by its id."""
-    for task in tasks:
-        if task["id"] == task_id:
-            
-            return task
-    raise HTTPException(status_code=404, detail=f"Task {task_id} not found")  
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM tasks WHERE id = ?", (task_id,))
+    row = cursor.fetchone()
+    conn.close()
+
+    if row is None:
+        raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
+
+    return {"id": row[0], "title": row[1], "done": bool(row[2])}
 
 @app.post("/tasks", status_code=201)
 def create_task(task: TaskCreate):
@@ -56,10 +66,15 @@ def create_task(task: TaskCreate):
     if not task.title.strip():
         raise HTTPException(status_code=400, detail="Title cannot be empty")
 
-    new_id = max((task_item["id"] for task_item in tasks), default=0) + 1
-    new_task = {"id": new_id, "title": task.title, "done": task.done}
-    tasks.append(new_task)
-    return new_task
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO tasks (title, done) VALUES (?, ?)", (task.title, task.done))
+    conn.commit()
+    new_id = cursor.lastrowid
+    conn.close()
+    result = {"id": new_id, "title": task.title, "done": task.done}
+
+    return result
 
 @app.put("/tasks/{task_id}")
 def update_task(task_id: int, updated: UpdateTask):
