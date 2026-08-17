@@ -79,28 +79,45 @@ def create_task(task: TaskCreate):
 @app.put("/tasks/{task_id}")
 def update_task(task_id: int, updated: UpdateTask):
     """Get a single task id than update a task."""
-    for task in tasks:
-        if task["id"] == task_id:
-            if updated.title is not None:
-                title = updated.title.strip()
-                if not title:
-                    raise HTTPException(status_code=400, detail="Title cannot be empty")
-                task["title"] = title
-            if updated.done is not None:
-                task["done"] = updated.done
-            return task
-    raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM tasks WHERE id = ?", (task_id,))
+    row = cursor.fetchone()
+
+    if row is None:
+            raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
+
+    if updated.title is not None:
+        new_title = updated.title.strip()
+        if not new_title:
+            raise HTTPException(status_code=400, detail="Title cannot be empty")
+    else:
+        new_title = row[1]
+
+    new_done = updated.done if updated.done is not None else bool(row[2])
+
+    cursor.execute("UPDATE tasks SET title = ?, done = ? WHERE id = ?",(new_title, new_done, task_id ))
+    conn.commit()
+    conn.close()
+    result = {"id": task_id, "title": new_title, "done": new_done}
+
+    return result
 
 @app.delete("/tasks/{task_id}", status_code=204)
 def delete_task(task_id: int):
     """Get a single task id than  delete a task"""
-    for task in tasks:
-        if task["id"] == task_id:
-            tasks.remove(task)
-            return Response(status_code=204)
-    raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM tasks WHERE id = ?", (task_id,))
+    row = cursor.fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
+    cursor.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
+    conn.commit()
+    conn.close()
+
+    return Response(status_code=204)
 
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
-
